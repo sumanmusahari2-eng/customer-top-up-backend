@@ -15,7 +15,7 @@ const { Pool } = require('pg');
 const busan = require('./busan');
 
 const app = express();
-app.use(express.json({ limit: '512kb' }));
+app.use(express.json({ limit: '10mb' })); // store snapshots carry inlined game/banner artwork (several MB) — 512kb rejected every admin save with 413
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || '';
