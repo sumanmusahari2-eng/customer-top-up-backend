@@ -291,7 +291,7 @@ app.get('/api/store', async (req, res) => {
   }
 });
 
-app.put('/api/admin/store', requireAuth, rateLimit, async (req, res) => {
+app.put('/api/admin/store', requireAuth, async (req, res) => { // no shared rate limiter here: admin saves are large, legitimate, and repeated Apply taps were hitting the shared 30/15min cap with a 429
   if (!pool) return res.status(503).json({ error: 'Auth service is not connected to a database yet.' });
   if (!req.user || !ADMIN_EMAILS.includes(req.user.email)) {
     return res.status(403).json({ error: 'Admin access only.' });
