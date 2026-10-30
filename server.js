@@ -312,7 +312,7 @@ app.put('/api/admin/store', requireAuth, async (req, res) => { // no shared rate
     res.status(500).json({ error: 'Could not save store data.' });
   }
 });
-// Banner-only save: the banner Apply sends just these five fields instead
+// Banner-only save: the banner Apply sends just the banner fields instead
 // of the whole multi-MB store snapshot, so a banner save lands fast even
 // though the full-store save stays as the flow for every other admin tab.
 app.put('/api/admin/banner', requireAuth, async (req, res) => {
@@ -321,16 +321,18 @@ app.put('/api/admin/banner', requireAuth, async (req, res) => {
     return res.status(403).json({ error: 'Admin access only.' });
   }
   const b = req.body || {};
-  const banner = {
-    img: typeof b.img === 'string' ? b.img.slice(0, 2000000) : '',
-    title: typeof b.title === 'string' ? b.title.slice(0, 100) : '',
-    hl: typeof b.hl === 'string' ? b.hl.slice(0, 100) : '',
-    sub: typeof b.sub === 'string' ? b.sub.slice(0, 500) : '',
-    cta: typeof b.cta === 'string' ? b.cta.slice(0, 100) : '',
-  };
   try {
     const { rows } = await pool.query('SELECT data FROM store_data WHERE id = 1');
     const data = rows.length ? (rows[0].data || {}) : {};
+    const prevSecs = (data.banner && typeof data.banner.slideSecs === 'number') ? data.banner.slideSecs : 4;
+    const banner = {
+      img: typeof b.img === 'string' ? b.img.slice(0, 2000000) : '',
+      title: typeof b.title === 'string' ? b.title.slice(0, 100) : '',
+      hl: typeof b.hl === 'string' ? b.hl.slice(0, 100) : '',
+      sub: typeof b.sub === 'string' ? b.sub.slice(0, 500) : '',
+      cta: typeof b.cta === 'string' ? b.cta.slice(0, 100) : '',
+      slideSecs: (typeof b.slideSecs === 'number' && isFinite(b.slideSecs)) ? Math.min(60, Math.max(2, b.slideSecs)) : prevSecs,
+    };
     data.banner = banner;
     await pool.query(
       `INSERT INTO store_data (id, data, updated_at) VALUES (1, $1::jsonb, NOW())
