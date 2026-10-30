@@ -312,6 +312,38 @@ app.put('/api/admin/store', requireAuth, async (req, res) => { // no shared rate
     res.status(500).json({ error: 'Could not save store data.' });
   }
 });
+// Banner-only save: the banner Apply sends just these five fields instead
+// of the whole multi-MB store snapshot, so a banner save lands fast even
+// though the full-store save stays as the flow for every other admin tab.
+app.put('/api/admin/banner', requireAuth, async (req, res) => {
+  if (!pool) return res.status(503).json({ error: 'Auth service is not connected to a database yet.' });
+  if (!req.user || !ADMIN_EMAILS.includes(req.user.email)) {
+    return res.status(403).json({ error: 'Admin access only.' });
+  }
+  const b = req.body || {};
+  const banner = {
+    img: typeof b.img === 'string' ? b.img.slice(0, 2000000) : '',
+    title: typeof b.title === 'string' ? b.title.slice(0, 100) : '',
+    hl: typeof b.hl === 'string' ? b.hl.slice(0, 100) : '',
+    sub: typeof b.sub === 'string' ? b.sub.slice(0, 500) : '',
+    cta: typeof b.cta === 'string' ? b.cta.slice(0, 100) : '',
+  };
+  try {
+    const { rows } = await pool.query('SELECT data FROM store_data WHERE id = 1');
+    const data = rows.length ? (rows[0].data || {}) : {};
+    data.banner = banner;
+    await pool.query(
+      `INSERT INTO store_data (id, data, updated_at) VALUES (1, $1::jsonb, NOW())
+       ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+      [JSON.stringify(data)]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('banner save failed:', err);
+    res.status(500).json({ error: 'Could not save the banner.' });
+  }
+});
+
 
 // ---- Phase 1: orders, wallet, top-up requests ----
 // Coins: 1 coin = ₹1. Wallet payments deduct immediately and the order
